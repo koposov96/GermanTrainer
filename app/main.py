@@ -11,6 +11,7 @@ from handlers.training import router as training_router
 from handlers.menu import router as menu_router
 from aiogram.fsm.storage.memory import MemoryStorage
 from handlers.categories import router as categories_router
+from handlers.import_words import router as import_router
 
 
 logging.basicConfig(level=logging.INFO)
@@ -24,6 +25,7 @@ dp = Dispatcher(
 
 
 dp.include_router(start_router)
+dp.include_router(import_router)
 dp.include_router(words_router)
 dp.include_router(training_router)
 dp.include_router(categories_router)

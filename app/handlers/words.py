@@ -26,7 +26,15 @@ async def add_word_start(message: Message, state: FSMContext):
     await state.set_state(AddWord.german)
 
 
-@router.message(AddWord.german)
+@router.message(
+    AddWord.german,
+    lambda message: message.text not in [
+        "📋 Мои слова",
+        "🎯 Учить слова",
+        "📊 Статистика",
+        "📚 Добавить слово"
+    ]
+)
 async def get_german(
         message: Message,
         state: FSMContext
@@ -43,7 +51,15 @@ async def get_german(
     await state.set_state(AddWord.russian)
 
 
-@router.message(AddWord.russian)
+@router.message(
+    AddWord.russian,
+    lambda message: message.text not in [
+        "📋 Мои слова",
+        "🎯 Учить слова",
+        "📊 Статистика",
+        "📚 Добавить слово"
+    ]
+)
 async def get_russian(
         message: Message,
         state: FSMContext

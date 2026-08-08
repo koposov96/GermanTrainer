@@ -4,6 +4,11 @@ from aiogram.types import Message, CallbackQuery
 from services.word_service import get_categories
 from keyboards.categories import categories_keyboard
 
+from services.word_service import get_lessons
+from keyboards.lessons import lessons_keyboard
+
+from services.word_service import get_words_by_lesson
+
 
 router = Router()
 
@@ -40,9 +45,58 @@ async def category_selected(
 
     category = call.data.split(":")[1]
 
-    await call.message.answer(
-        f"📁 Раздел:\n\n{category}\n\n"
-        "Здесь позже будут уроки."
+    lessons = get_lessons(
+    call.from_user.id,
+    category
+)
+
+    await call.message.edit_text(
+    f"📁 {category}",
+    reply_markup=lessons_keyboard(
+        category,
+        lessons
     )
+)
+
+    await call.answer()
+
+@router.callback_query(lambda c: c.data == "back:categories")
+async def back_to_categories(call: CallbackQuery):
+
+    categories = get_categories(call.from_user.id)
+
+    await call.message.edit_text(
+        "📚 Выбери раздел:",
+        reply_markup=categories_keyboard(categories)
+    )
+
+    await call.answer()
+
+@router.callback_query(
+    lambda call: call.data.startswith("lesson|")
+)
+async def lesson_selected(call: CallbackQuery):
+
+    print("LESSON CLICKED")
+    print(call.data)
+    print(call.data.split(":"))
+
+    _, category, lesson = call.data.split("|")
+
+    words = get_words_by_lesson(
+        call.from_user.id,
+        category,
+        lesson
+    )
+
+    text = f"📂 {lesson}\n\n"
+
+    if not words:
+        text += "Пока нет слов."
+    else:
+        for word in words:
+            text += f"🇩🇪 {word.german} — 🇷🇺 {word.russian}\n"
+
+    await call.message.edit_text(text)
 
     await call.answer()
