@@ -47,6 +47,54 @@ def get_random_word(telegram_id: int):
 
     return random.choice(words)
 
+def get_random_word_by_lesson(
+    telegram_id: int,
+    category: str,
+    lesson: str
+):
+
+    print("=== TRAINING SEARCH ===")
+    print("telegram_id:", telegram_id)
+    print("category:", repr(category))
+    print("lesson:", repr(lesson))
+
+    session = SessionLocal()
+
+    available_lessons = (
+        session.query(Word.lesson)
+        .filter(
+            Word.telegram_id == telegram_id,
+            Word.category == category
+        )
+        .distinct()
+        .all()
+    )
+
+    print(
+        "LESSONS IN DB:",
+        [repr(x[0]) for x in available_lessons]
+    )
+
+    words = (
+        session.query(Word)
+        .filter(
+            Word.telegram_id == telegram_id,
+            Word.category == category,
+            Word.lesson == lesson
+        )
+        .all()
+    )
+
+    print("FOUND WORDS:", len(words))
+
+    session.close()
+
+    if not words:
+        return None
+
+    return random.choice(words)
+    
+
 def get_all_words(telegram_id: int):
 
     session = SessionLocal()
