@@ -94,6 +94,48 @@ def get_random_word_by_lesson(
 
     return random.choice(words)
     
+def set_word_difficult(
+    telegram_id: int,
+    word_id: int,
+    difficult: bool
+):
+    session = SessionLocal()
+
+    word = (
+        session.query(Word)
+        .filter(
+            Word.id == word_id,
+            Word.telegram_id == telegram_id
+        )
+        .first()
+    )
+
+    if word:
+        word.difficult = difficult
+        session.commit()
+
+    session.close()
+
+def get_random_difficult_word(
+    telegram_id: int
+):
+    session = SessionLocal()
+
+    words = (
+        session.query(Word)
+        .filter(
+            Word.telegram_id == telegram_id,
+            Word.difficult == True
+        )
+        .all()
+    )
+
+    session.close()
+
+    if not words:
+        return None
+
+    return random.choice(words)
 
 def get_all_words(telegram_id: int):
 

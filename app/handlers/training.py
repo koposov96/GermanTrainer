@@ -9,6 +9,8 @@ from aiogram.utils.keyboard import InlineKeyboardBuilder
 from services.word_service import (
     get_random_word,
     get_random_word_by_lesson,
+    get_random_difficult_word,
+    set_word_difficult,
     get_categories,
     get_lessons
 )
@@ -32,6 +34,11 @@ def training_menu_keyboard():
     builder.button(
         text="📂 По уроку",
         callback_data="training:lesson"
+    )
+
+    builder.button(
+        text="⭐ Сложные слова",
+        callback_data="training:difficult"
     )
 
     builder.adjust(1)
@@ -80,6 +87,23 @@ def training_lessons_keyboard(category, lessons):
 
     return builder.as_markup()
 
+def word_training_keyboard(word):
+    builder = InlineKeyboardBuilder()
+
+    if word.difficult:
+        builder.button(
+            text="⭐ Убрать из сложных",
+            callback_data=f"word_difficult:remove:{word.id}"
+        )
+    else:
+        builder.button(
+            text="⭐ Добавить в сложные",
+            callback_data=f"word_difficult:add:{word.id}"
+        )
+
+    builder.adjust(1)
+
+    return builder.as_markup()
 
 async def send_next_word(
     message: Message,
@@ -104,6 +128,12 @@ async def send_next_word(
             telegram_id,
             category,
             lesson
+        )
+
+    elif training_mode == "difficult":
+
+        word = get_random_difficult_word(
+            telegram_id
         )
 
     else:
@@ -147,14 +177,18 @@ async def send_next_word(
         )
 
     await state.update_data(
-        correct=correct
+        correct=correct,
+        word_id=word.id
     )
 
     await state.set_state(
         Training.answer
     )
 
-    await message.answer(text)
+    await message.answer(
+        text,
+        reply_markup=word_training_keyboard(word)
+    )
 
 
 @router.message(
@@ -207,7 +241,31 @@ async def training_all(
 
     await call.answer()
 
+@router.callback_query(
+    lambda call: call.data == "training:difficult"
+)
+async def training_difficult(
+    call: CallbackQuery,
+    state: FSMContext
+):
+    await state.clear()
 
+    await state.update_data(
+        telegram_id=call.from_user.id,
+        training_mode="difficult"
+    )
+
+    await call.message.edit_text(
+        "⭐ Тренировка по сложным словам началась!"
+    )
+
+    await send_next_word(
+        call.message,
+        state
+    )
+
+    await call.answer()
+    
 @router.callback_query(
     lambda call: call.data == "training:lesson"
 )
@@ -320,6 +378,49 @@ async def training_menu(
 
     await call.answer()
 
+@router.callback_query(
+    lambda call: call.data.startswith("word_difficult:add:")
+)
+async def add_difficult_word(
+    call: CallbackQuery,
+    state: FSMContext
+):
+
+    word_id = int(
+        call.data.split(":")[-1]
+    )
+
+    set_word_difficult(
+        call.from_user.id,
+        word_id,
+        True
+    )
+
+    await call.answer(
+        "✅ Добавлено в сложные слова"
+    )
+
+@router.callback_query(
+    lambda call: call.data.startswith("word_difficult:remove:")
+)
+async def remove_difficult_word(
+    call: CallbackQuery,
+    state: FSMContext
+):
+
+    word_id = int(
+        call.data.split(":")[-1]
+    )
+
+    set_word_difficult(
+        call.from_user.id,
+        word_id,
+        False
+    )
+
+    await call.answer(
+        "✅ Убрано из сложных слов"
+    )
 
 @router.message(
     Training.answer,
@@ -338,7 +439,29 @@ async def check_answer(
 
     correct = data["correct"]
 
-    if message.text.lower().strip() == correct.lower().strip():
+    # Допустимые варианты ответа из базы.
+    # Например:
+    # "звук, шум"
+    # превращается в ["звук", "шум"]
+    correct_variants = [
+        variant.strip().lower()
+        for variant in correct.split(",")
+        if variant.strip()
+    ]
+
+    # Ответ пользователя.
+    # Вводить варианты тоже нужно через запятую.
+    user_variants = [
+        variant.strip().lower()
+        for variant in message.text.split(",")
+        if variant.strip()
+    ]
+
+    # Сравниваем наборы без учета порядка.
+    if all(
+        variant in correct_variants
+        for variant in user_variants
+    ):
 
         await message.answer(
             "✅ Правильно!"

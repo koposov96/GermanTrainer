@@ -42,3 +42,8 @@ class Word(Base):
         String,
         default="Без категории"
     )
+
+    difficult: Mapped[bool] = mapped_column(
+        default=False,
+        nullable=False
+    )
